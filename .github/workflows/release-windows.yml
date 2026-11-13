@@ -1,0 +1,28 @@
+name: Build Windows release
+on:
+  push:
+    branches: [ "master" ]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Package with PyInstaller
+        shell: pwsh
+        run: |
+          pip install arcade==2.6.17 pyinstaller
+          pyinstaller --noconfirm --windowed --name "Asteroids" --collect-all arcade --collect-all pymunk  "main.py"
+          Compress-Archive -Path "dist\Asteroids\*" -DestinationPath "Asteroids-windows.zip"
+      - name: Publish to the "latest" release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view latest 2>$null; if ($LASTEXITCODE -ne 0) { gh release create latest --title "Latest build" --notes "Windows build. Unzip and run Asteroids.exe." }
+          gh release upload latest "Asteroids-windows.zip" --clobber
